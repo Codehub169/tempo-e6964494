@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --background: #121212;
+    --surface-1: #1e1e1e;
+    --surface-2: #2a2a2a;
+    --primary: #6a5af9;
+    --primary-light: #8b7ffc;
+    --text-primary: #ffffff;
+    --text-secondary: #a0a0a0;
+    --border-color: #3a3a3a;
+    --green: #28a745;
+    --sent-bg: var(--primary);
+    --received-bg: var(--surface-2);
+    --shadow-color: rgba(0, 0, 0, 0.2);
+    --blur: 10px; /* Default blur, can be overridden by Tailwind utilities */
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--background);
+    color: var(--text-primary);
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary) var(--surface-1);
+}
+
+*::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+    background: var(--surface-1);
+}
+
+*::-webkit-scrollbar-thumb {
+    background-color: var(--primary);
+    border-radius: 10px;
+    border: 2px solid var(--surface-1);
+}
+
+/* Phosphor Icons base class for sizing if needed */
+.ph {
+    font-size: 1.25rem; /* Default size, can be overridden */
+}
