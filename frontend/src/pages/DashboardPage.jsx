@@ -59,10 +59,8 @@ function DashboardPage() {
   useEffect(() => {
     if (!user || !socketService) return; // Ensure user and socketService are available
 
-    const token = localStorage.getItem('authToken');
-    if (token && !socketService.isConnected()) {
-        socketService.connect(token); 
-    }
+    // Removed incorrect socketService.connect(token) call from here.
+    // WebSocket connections are specific to chat rooms and managed by ChatRoomPage.jsx.
 
     const handleNewMessage = (messageData) => {
         setChats(prevChats => {
@@ -74,23 +72,29 @@ function DashboardPage() {
                 lastMessage: { text: messageData.content, senderName: messageData.sender?.full_name || (messageData.is_bot_message ? 'Bot' : 'Unknown') },
                 timestamp: new Date(messageData.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             };
+            // Move updated chat to the top
             const newChats = [updatedChat, ...prevChats.slice(0, chatIndex), ...prevChats.slice(chatIndex + 1)];
             return newChats;
         });
     };
 
     const handleChatUpdated = (updatedChatData) => {
+        // This event could signify new chat creation, participant changes, etc.
+        // Re-fetching all chats is a simple way to update the list.
         fetchChats(); 
     };
 
+    // These listeners will only receive events if a WebSocket connection
+    // is active (e.g., if a ChatRoomPage is open and has connected).
     const unsubNewMessage = socketService.on('new_message', handleNewMessage);
-    const unsubChatUpdated = socketService.on('chat_updated', handleChatUpdated);
+    const unsubChatUpdated = socketService.on('chat_updated', handleChatUpdated); // Assuming a 'chat_updated' event exists for broader changes
 
     return () => {
       unsubNewMessage();
       unsubChatUpdated();
+      // No global disconnect here as connections are per-chat and managed elsewhere.
     };
-  }, [fetchChats, selectedChatId, user]);
+  }, [fetchChats, user]); // Removed selectedChatId from deps as it's not directly related to setting up these listeners
 
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => {
@@ -107,21 +111,19 @@ function DashboardPage() {
     if (!user) return;
     setError(null);
 
-    let typeToUseInPayload; // This will be the string value from the enum e.g. "one_on_one"
+    let typeToUseInPayload; 
 
     if (chatTypeFromModal) {
-      typeToUseInPayload = chatTypeFromModal; // chatTypeFromModal is already the string value from ChatType enum
+      typeToUseInPayload = chatTypeFromModal; 
     } else {
-      // Fallback logic, should ideally not be hit if NewChatModal works correctly
+      // Fallback logic (should ideally not be hit if NewChatModal determines type correctly)
       if (selectedContactIds.length > 1) {
         typeToUseInPayload = ChatType.GROUP;
       } else if (selectedContactIds.length === 1) {
+        // This dummyContacts lookup might be outdated if contacts change.
+        // NewChatModal should pass the determined type directly.
         const contact = dummyContacts.find(c => c.id.toString() === selectedContactIds[0].toString());
-        if (contact && contact.is_bot) {
-          typeToUseInPayload = ChatType.BOT;
-        } else {
-          typeToUseInPayload = ChatType.ONE_ON_ONE;
-        }
+        typeToUseInPayload = (contact && contact.is_bot) ? ChatType.BOT : ChatType.ONE_ON_ONE;
       } else {
         setError('Please select at least one contact.');
         return;
@@ -130,8 +132,8 @@ function DashboardPage() {
 
     const chatData = {
       name: chatName,
-      type: typeToUseInPayload, // Use the determined string value ('one_on_one', 'group', 'bot')
-      participant_ids: selectedContactIds.map(id => parseInt(id, 10)), // Backend expects integers
+      type: typeToUseInPayload, 
+      participant_ids: selectedContactIds.map(id => parseInt(id, 10)),
     };
 
     try {
@@ -140,9 +142,9 @@ function DashboardPage() {
       const formattedNewChat = {
         ...newChatFromBackend,
         id: newChatFromBackend.id.toString(),
-        type: newChatFromBackend.chat_type, // Use backend's chat_type string
+        type: newChatFromBackend.chat_type, 
         name: newChatFromBackend.name || (newChatFromBackend.participants && newChatFromBackend.participants.length > 0 ? newChatFromBackend.participants.map(p => p.user.full_name).filter(name => user && name !== user.full_name).join(', ') : 'Chat'),
-        lastMessage: { text: 'No messages yet.' }, // New chat starts with no messages
+        lastMessage: { text: 'No messages yet.' },
         timestamp: new Date(newChatFromBackend.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         avatarUrl: newChatFromBackend.chat_type === ChatType.ONE_ON_ONE 
                     ? newChatFromBackend.participants?.find(p => user && p.user.id !== user.id)?.user?.avatarUrl || `https://i.pravatar.cc/150?u=${newChatFromBackend.id}`
@@ -161,10 +163,9 @@ function DashboardPage() {
   const [dummyContacts, setDummyContacts] = useState([]);
   useEffect(() => {
     const fetchContacts = async () => {
-        if (!user) return; // Don't fetch if user isn't loaded
+        if (!user) return;
         try {
             const contacts = await chatService.getAvailableContacts();
-            // Ensure is_bot is correctly propagated if present in backend User schema
             setDummyContacts(contacts.map(c => ({...c, id: c.id.toString(), avatarUrl: `https://i.pravatar.cc/150?u=${c.email}` })));
         } catch (error) {
             console.error("Failed to fetch contacts for modal", error);
