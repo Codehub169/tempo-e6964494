@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PhMagnifyingGlass, PhX } from 'phosphor-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { ChatType } from '../utils/enums'; // Frontend enum for chat types
+import { ChatType } from '../../utils/enums'; // Frontend enum for chat types
 
 const NewChatModal = ({ isOpen, onClose, onStartChat, contacts: availableContacts = [] }) => {
   const { user } = useAuth();
