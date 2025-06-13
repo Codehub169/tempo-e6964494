@@ -51,7 +51,7 @@ def get_chats_for_user(db: Session, user_id: int, skip: int = 0, limit: int = 10
 
 def create_chat(db: Session, chat_data: schemas.ChatCreate, creator_id: int) -> models.Chat:
     # For 1-on-1, check if chat already exists
-    if chat_data.type == models.ChatType.ONE_ON_ONE and len(chat_data.participant_ids) == 1:
+    if chat_data.chat_type == models.ChatType.ONE_ON_ONE and len(chat_data.participant_ids) == 1:
         other_user_id = chat_data.participant_ids[0]
         # Query to find a 1-on-1 chat involving both the creator and the other user
         # This query needs to ensure that there's a chat of type ONE_ON_ONE
@@ -77,7 +77,7 @@ def create_chat(db: Session, chat_data: schemas.ChatCreate, creator_id: int) -> 
         if existing_chat:
             return db.query(models.Chat).options(joinedload(models.Chat.participants).joinedload(models.ChatParticipant.user)).filter(models.Chat.id == existing_chat.id).first()
 
-    db_chat = models.Chat(name=chat_data.name, chat_type=chat_data.type, creator_id=creator_id)
+    db_chat = models.Chat(name=chat_data.name, chat_type=chat_data.chat_type, creator_id=creator_id)
     db.add(db_chat)
     db.flush()  # To get db_chat.id
 
@@ -95,7 +95,7 @@ def create_chat(db: Session, chat_data: schemas.ChatCreate, creator_id: int) -> 
                 db.add(db_participant)
     
     # For BOT chats, if gemini bot needs a user ID, ensure it's handled or a specific bot user exists
-    if chat_data.type == models.ChatType.BOT:
+    if chat_data.chat_type == models.ChatType.BOT:
         # Potentially add a predefined bot user as a participant if needed
         pass 
 
