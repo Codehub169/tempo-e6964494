@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import chatService from '../services/chatService';
 import { socketService } from '../services/socketService';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import { ChatType } from '../../utils/enums'; // Import frontend ChatType enum
+import { ChatType } from '../utils/enums'; // Import frontend ChatType enum
 
 function DashboardPage() {
   const { user, logout } = useAuth();
@@ -32,7 +32,7 @@ function DashboardPage() {
                        ? { text: chat.messages[0].content, senderName: chat.messages[0].sender?.full_name || (chat.messages[0].is_bot_message ? 'Bot' : 'Unknown') } 
                        : { text: 'No messages yet.'},
         timestamp: chat.updated_at ? new Date(chat.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A',
-        avatarUrl: chat.type === ChatType.ONE_ON_ONE 
+        avatarUrl: chat.chat_type === ChatType.ONE_ON_ONE 
                     ? chat.participants?.find(p => user && p.user.id !== user.id)?.user?.avatarUrl || `https://i.pravatar.cc/150?u=${chat.id}`
                     : chat.participants?.[0]?.user?.avatarUrl || `https://i.pravatar.cc/150?u=${chat.id}`,
         unreadCount: chat.unreadCount || 0, // Assuming backend might provide this, else default
