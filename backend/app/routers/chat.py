@@ -19,7 +19,7 @@ async def create_new_chat(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    if chat_data.type == models.ChatType.BOT and not chat_data.participant_ids:
+    if chat_data.chat_type == models.ChatType.BOT and not chat_data.participant_ids:
         pass 
 
     created_chat = crud.create_chat(db=db, chat_data=chat_data, creator_id=current_user.id)

@@ -60,7 +60,7 @@ const connect = (chatId) => {
 
   currentChatIdInternal = chatId;
   const wsBaseUrl = getWebSocketBaseUrl();
-  const socketUrl = `${wsBaseUrl}/ws/${chatId}/${token}`;
+  const socketUrl = `${wsBaseUrl}/api/chats/ws/${chatId}/${token}`;
   console.log(`SocketService: Attempting to connect to ${socketUrl}`);
 
   currentSocket = new WebSocket(socketUrl);
