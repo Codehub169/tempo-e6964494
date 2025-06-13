@@ -1,19 +1,22 @@
-import { io } from 'socket.io-client';
+// Using Native WebSocket API as backend uses FastAPI's native WebSockets
 
-// Determine WebSocket URL from environment variable or use current origin
-const WEBSOCKET_URL = import.meta.env.VITE_SOCKET_URL || window.location.origin;
-
-let socket = null;
-
-// Simple local event emitter to allow multiple parts of the app to subscribe to socket events
+let currentSocket = null;
+let currentChatIdInternal = null;
 const eventHandlers = {};
+
+const getWebSocketBaseUrl = () => {
+  if (import.meta.env.VITE_SOCKET_URL) {
+    return import.meta.env.VITE_SOCKET_URL; // Expected to be like ws://localhost:9000 or wss://yourdomain.com
+  }
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${protocol}//${window.location.host}`;
+};
 
 const on = (eventName, callback) => {
   if (!eventHandlers[eventName]) {
     eventHandlers[eventName] = [];
   }
   eventHandlers[eventName].push(callback);
-  // Return an unsubscribe function
   return () => {
     off(eventName, callback);
   };
@@ -37,158 +40,119 @@ const emitInternalEvent = (eventName, data) => {
   }
 };
 
-/**
- * Connects to the WebSocket server.
- * @param {string} token - The authentication token.
- */
-const connect = (token) => {
-  if (socket && socket.connected) {
-    console.warn('Socket is already connected.');
+const connect = (chatId) => {
+  const token = localStorage.getItem('authToken');
+  if (!token) {
+    console.error('SocketService: No auth token found for WebSocket connection.');
+    emitInternalEvent('error', { message: 'Authentication token not found.' });
     return;
   }
 
-  // Disconnect and clean up listeners from any previous socket instance
-  if (socket) {
-    socket.off(); // Remove all listeners from the old socket instance
-    socket.disconnect();
+  if (currentSocket && currentSocket.readyState === WebSocket.OPEN && currentChatIdInternal === chatId) {
+    console.log(`SocketService: Already connected to chat ${chatId}.`);
+    return;
   }
-  
-  console.log(`Attempting to connect to WebSocket server at ${WEBSOCKET_URL}`);
-  socket = io(WEBSOCKET_URL, {
-    auth: { token },
-    transports: ['websocket'], // Prefer WebSocket transport
-    reconnectionAttempts: 5,   // Number of reconnection attempts
-    timeout: 10000,            // Connection timeout in ms
-    // path: '/socket.io', // Default path, adjust if backend Socket.IO server is on a different path
-  });
 
-  // Standard Socket.IO events
-  socket.on('connect', () => {
-    console.log('Socket connected successfully. ID:', socket.id);
-    emitInternalEvent('connect');
-  });
+  if (currentSocket) {
+    console.log(`SocketService: Closing existing socket for chat ${currentChatIdInternal} before connecting to ${chatId}.`);
+    currentSocket.close();
+  }
 
-  socket.on('disconnect', (reason) => {
-    console.log('Socket disconnected. Reason:', reason);
-    emitInternalEvent('disconnect', reason);
-    // If the server disconnects (e.g., auth error), socket.io might try to reconnect based on options.
-    // Handle permanent auth failures or advise user if needed.
-  });
+  currentChatIdInternal = chatId;
+  const wsBaseUrl = getWebSocketBaseUrl();
+  const socketUrl = `${wsBaseUrl}/ws/${chatId}/${token}`;
+  console.log(`SocketService: Attempting to connect to ${socketUrl}`);
 
-  socket.on('connect_error', (error) => {
-    console.error('Socket connection error:', error.message);
+  currentSocket = new WebSocket(socketUrl);
+
+  currentSocket.onopen = () => {
+    console.log(`SocketService: WebSocket connected for chat ${chatId}.`);
+    emitInternalEvent('connect'); 
+  };
+
+  currentSocket.onmessage = (event) => {
+    try {
+      const messageData = JSON.parse(event.data);
+      // Assuming server sends messages like { type: 'event_name', payload: ... } or just the payload for new_message
+      // Based on backend, new messages are broadcast as the full Message schema
+      // Typing indicators are { type: 'typing_indicator', ... }
+      if (messageData.type === 'typing_indicator') {
+        emitInternalEvent('typing_indicator', messageData);
+      } else {
+        // Assume other messages are new chat messages
+        emitInternalEvent('new_message', messageData);
+      }
+    } catch (error) {
+      console.error('SocketService: Error parsing message data:', error, event.data);
+    }
+  };
+
+  currentSocket.onerror = (error) => {
+    console.error('SocketService: WebSocket error:', error);
     emitInternalEvent('connect_error', error);
-  });
+  };
 
-  // Application-specific events from the server
-  // These event names should match what the backend emits
-  socket.on('new_message', (messageData) => {
-    // Expected: { chatId: string, message: MessageObject }
-    emitInternalEvent('new_message', messageData);
-  });
-
-  socket.on('typing_indicator', (typingData) => {
-    // Expected: { chatId: string, user: { id: string, name: string }, isTyping: boolean }
-    emitInternalEvent('typing_indicator', typingData);
-  });
-
-  socket.on('user_status_update', (statusData) => {
-    // Expected: { userId: string, isOnline: boolean, lastSeen?: string }
-    emitInternalEvent('user_status_update', statusData);
-  });
-
-  socket.on('chat_updated', (chatData) => {
-    // Expected: { chatId: string, updatedData: { name?: string, members?: UserObject[] } }
-    emitInternalEvent('chat_updated', chatData);
-  });
-
-  socket.on('server_error', (errorData) => {
-    // Expected: { message: string, details?: any }
-    console.error('Server error via WebSocket:', errorData);
-    emitInternalEvent('server_error', errorData);
-  });
+  currentSocket.onclose = (event) => {
+    console.log(`SocketService: WebSocket disconnected for chat ${chatId}. Code: ${event.code}, Reason: ${event.reason}`);
+    emitInternalEvent('disconnect', { reason: event.reason, code: event.code });
+    if (currentChatIdInternal === chatId) { // Only nullify if this was the socket that closed
+        currentSocket = null;
+        currentChatIdInternal = null;
+    }
+  };
 };
 
-/**
- * Disconnects from the WebSocket server.
- */
 const disconnect = () => {
-  if (socket) {
-    console.log('Disconnecting socket...');
-    socket.disconnect();
-    // The 'disconnect' event will be fired, no need to set socket = null here
-    // as socket.io handles the object state and reconnection attempts.
+  if (currentSocket) {
+    console.log(`SocketService: Disconnecting WebSocket for chat ${currentChatIdInternal}.`);
+    currentSocket.close();
+    currentSocket = null;
+    currentChatIdInternal = null;
   }
 };
 
-/**
- * Emits an event to the WebSocket server.
- * @param {string} eventName - The name of the event.
- * @param {object} data - The data to send with the event.
- */
-const emitToServer = (eventName, data) => {
-  if (socket && socket.connected) {
-    socket.emit(eventName, data);
+const send = (data) => {
+  if (currentSocket && currentSocket.readyState === WebSocket.OPEN) {
+    currentSocket.send(JSON.stringify(data));
   } else {
-    console.warn(`Socket not connected. Cannot emit event '${eventName}' to server.`);
-    // Optionally, queue messages or handle error
+    console.warn('SocketService: WebSocket not connected. Cannot send data.');
   }
 };
 
-// --- Public API Methods ---
-
-/**
- * Joins a specific chat room.
- * @param {string} chatId - The ID of the chat to join.
- */
+// Public API Methods
 const joinChat = (chatId) => {
-  emitToServer('join_chat', { chatId });
+  connect(chatId); // For native WebSockets, joining a chat means connecting to its specific endpoint
 };
 
-/**
- * Leaves a specific chat room.
- * @param {string} chatId - The ID of the chat to leave.
- */
 const leaveChat = (chatId) => {
-  emitToServer('leave_chat', { chatId });
+  // Optional: check if chatId matches currentChatIdInternal before disconnecting
+  // if (currentChatIdInternal === chatId) {
+    disconnect();
+  // }
 };
 
-/**
- * Sends a chat message.
- * @param {object} params
- * @param {string} params.chatId - The ID of the chat.
- * @param {string} params.content - The message content.
- */
-const sendMessage = ({ chatId, content }) => {
-  emitToServer('send_message', { chatId, content });
-};
-
-/**
- * Sends a typing indicator status.
- * @param {object} params
- * @param {string} params.chatId - The ID of the chat.
- * @param {boolean} params.isTyping - True if the user is typing, false otherwise.
- */
+// Note: Sending chat messages is done via HTTP POST, then broadcast by server via WebSocket.
+// This function is for other types of messages sent from client over WS, like typing indicators.
 const sendTypingIndicator = ({ chatId, isTyping }) => {
-  emitToServer('typing', { chatId, isTyping });
+  // Ensure we're connected to the correct chat before sending
+  if (currentSocket && currentSocket.readyState === WebSocket.OPEN && currentChatIdInternal === chatId) {
+    send({ type: 'typing', isTyping });
+  } else if (currentChatIdInternal !== chatId) {
+    console.warn(`SocketService: Not connected to chat ${chatId}. Cannot send typing indicator.`);
+  }
 };
 
-/**
- * Checks if the WebSocket is currently connected.
- * @returns {boolean} True if connected, false otherwise.
- */
 const isConnected = () => {
-  return socket ? socket.connected : false;
+  return currentSocket ? currentSocket.readyState === WebSocket.OPEN : false;
 };
 
 export const socketService = {
-  connect,
-  disconnect,
-  on,       // Method to subscribe to events received from the server
-  off,      // Method to unsubscribe from events
-  joinChat,
-  leaveChat,
-  sendMessage,
-  sendTypingIndicator,
+  connect,    // Connects to a specific chat's WebSocket
+  disconnect, // Disconnects the current WebSocket
+  on,         // Subscribe to events
+  off,        // Unsubscribe
+  joinChat,   // Alias for connect for conceptual similarity with previous API
+  leaveChat,  // Alias for disconnect
+  sendTypingIndicator, // Send data (e.g., typing indicator)
   isConnected,
 };

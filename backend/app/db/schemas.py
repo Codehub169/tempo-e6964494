@@ -1,7 +1,7 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import List, Optional
 from datetime import datetime
-from ..db.models import ChatType # Import ChatType enum from models
+from backend.app.db.models import ChatType # Import ChatType enum from models
 
 # User Schemas
 class UserBase(BaseModel):
@@ -13,9 +13,10 @@ class UserCreate(UserBase):
 
 class User(UserBase):
     id: int
+    is_bot: Optional[bool] = False
 
     class Config:
-        orm_mode = True
+        from_attributes = True # Changed from orm_mode for Pydantic v2
 
 class UserInDB(User):
     hashed_password: str
@@ -27,56 +28,61 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     email: Optional[str] = None
+    user_id: Optional[int] = None
 
 # Chat Participant Schemas
 class ChatParticipantBase(BaseModel):
     user_id: int
 
 class ChatParticipant(ChatParticipantBase):
-    # id: int # The association object might not need its own ID exposed here if user_id/chat_id is key
-    # chat_id: int # Contextual, usually known when fetching participants for a chat
     joined_at: datetime
     user: User # Nested User schema to provide participant details
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # Message Schemas
 class MessageBase(BaseModel):
     content: str
 
 class MessageCreate(MessageBase):
-    # chat_id will be provided as a path parameter or in context, not in request body for message creation itself typically
-    pass # Content is the main part of creation schema, chat_id taken from path
+    pass
 
 class Message(MessageBase):
     id: int
     sender_id: int
     chat_id: int
-    timestamp: datetime
+    created_at: datetime = Field(default_factory=datetime.utcnow) # Renamed from timestamp
     is_bot_message: bool = False
-    sender: User # Nested User schema for sender details
+    sender: Optional[User] = None # Nested User schema for sender details, make optional if sender might not always be fetched
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # Chat Schemas
 class ChatBase(BaseModel):
-    name: Optional[str] = None # Optional name, e.g., for group chats
-    type: ChatType
+    name: Optional[str] = None
+    chat_type: ChatType = Field(..., alias='type') # Alias 'type' to 'chat_type'
+
+    class Config:
+        populate_by_name = True # Allows using 'type' in input data
 
 class ChatCreate(ChatBase):
-    participant_ids: List[int] # List of user IDs to include in the chat (excluding creator, who is implicit)
+    # For 1-on-1, participant_ids should contain the other user's ID.
+    # For group, list of all user IDs (excluding creator, or creator can be in it, handled by backend).
+    # For bot, participant_ids might be empty if it's a direct chat with a globally defined bot,
+    # or could contain the bot's user ID if bots are treated as regular users.
+    participant_ids: List[int] = [] 
 
 class Chat(ChatBase):
     id: int
-    creator_id: int
+    creator_id: Optional[int] = None # Made optional as some system chats might not have a creator
     created_at: datetime
     updated_at: datetime
-    creator: User # Nested User schema for creator details
-    participants: List[ChatParticipant] = [] # List of participants in the chat
-    # messages: List[Message] = [] # Typically messages are paginated and fetched separately
-    # last_message: Optional[Message] = None # For dashboard, might be populated by a specific query
+    creator: Optional[User] = None # Nested User schema for creator details
+    participants: List[ChatParticipant] = []
+    messages: List[Message] = [] # To include messages when fetching chat details
+    # last_message: Optional[Message] = None 
 
     class Config:
-        orm_mode = True
+        from_attributes = True

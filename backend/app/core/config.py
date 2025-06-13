@@ -16,10 +16,11 @@ class Settings(BaseSettings):
 
     # Gemini API settings
     GEMINI_API_KEY: Optional[str] = None # Should be set in .env or environment variables
-    GEMINI_MODEL_NAME: str = "gemini-2.5-flash-preview-05-20" # As per the project plan
+    GEMINI_MODEL_NAME: str = "gemini-1.5-flash-preview-0514" # Updated model name as per batch instruction
+    GEMINI_BOT_EMAIL_ID: str = "gemini@bot.chitchat" # A dummy email for the bot user if needed
 
     # API prefix
-    API_V1_STR: str = "/api/v1"
+    API_V1_STR: str = "/api/v1" # This might be used for OpenAPI URL or future versioning
 
     class Config:
         env_file = ".env"

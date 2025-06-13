@@ -9,11 +9,12 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    full_name = Column(String(100), index=True)
+    full_name = Column(String(100), index=True, nullable=True)
     email = Column(String(100), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
+    is_bot = Column(Boolean, default=False) # To identify if a user is a bot
 
     # Relationships
     created_chats = relationship("Chat", back_populates="creator", foreign_keys="Chat.creator_id")
@@ -70,7 +71,6 @@ class ChatParticipant(Base):
     chat_id = Column(Integer, ForeignKey("chats.id"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     joined_at = Column(DateTime(timezone=True), server_default=func.now())
-    # Future enhancements: last_read_timestamp, is_admin for group chats, muted, etc.
 
     # Relationships
     chat = relationship("Chat", back_populates="participants")

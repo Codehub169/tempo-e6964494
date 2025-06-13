@@ -1,16 +1,30 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { PhPaperclip, PhSmiley, PhPaperPlaneTilt } from 'phosphor-react';
 
-const MessageInput = ({ onSendMessage, placeholder = 'Type a message...' }) => {
+const MessageInput = ({ onSendMessage, onTypingChange, placeholder = 'Type a message...' }) => {
   const [messageText, setMessageText] = useState('');
   const textareaRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
 
   const handleInputChange = (event) => {
     setMessageText(event.target.value);
+    if (onTypingChange) {
+        if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+        }
+        onTypingChange(true); // Signal typing started
+        typingTimeoutRef.current = setTimeout(() => {
+            onTypingChange(false); // Signal typing stopped after a delay
+        }, 1500); // Adjust delay as needed
+    }
   };
 
   const handleSend = () => {
     if (messageText.trim() === '') return;
+    if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+    }
+    if(onTypingChange) onTypingChange(false); // Ensure typing indicator is off
     onSendMessage(messageText.trim());
     setMessageText('');
   };
@@ -23,11 +37,15 @@ const MessageInput = ({ onSendMessage, placeholder = 'Type a message...' }) => {
   };
 
   useEffect(() => {
-    // Auto-resize textarea height
     if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto'; // Reset height
+      textareaRef.current.style.height = 'auto';
       const scrollHeight = textareaRef.current.scrollHeight;
       textareaRef.current.style.height = `${scrollHeight}px`;
+    }
+    return () => {
+        if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+        }
     }
   }, [messageText]);
 
