@@ -3,10 +3,10 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
 
-from backend.app.db import crud, schemas, models
-from backend.app.db.database import get_db
-from backend.app.core import security
-from backend.app.core.config import settings
+from app.db import crud, schemas, models
+from app.db.database import get_db
+from app.core import security
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -36,6 +36,6 @@ async def signup_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     # access_token = security.create_access_token(
     #     data={"sub": created_user.email, "user_id": created_user.id}, expires_delta=access_token_expires
     # )
-    # return {"access_token": access_token, "token_type": "bearer", "user": schemas.User.from_orm(created_user) } 
+    # return {"access_token": access_token, "token_type": "bearer", "user": schemas.User.model_validate(created_user) } # Pydantic V2
     # For now, let's just return the user, client can then login
     return created_user

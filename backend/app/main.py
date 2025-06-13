@@ -2,9 +2,9 @@ from fastapi import FastAPI, Depends
 from fastapi.staticfiles import StaticFiles
 import os
 
-from backend.app.core.config import settings
-from backend.app.db.database import engine #, create_db_and_tables # Import create_db_and_tables
-from backend.app.db import models # Import models to ensure Base knows about them
+from app.core.config import settings
+from app.db.database import engine #, create_db_and_tables # Import create_db_and_tables
+from app.db import models # Import models to ensure Base knows about them
 
 # Define the base directory for the application's static files
 # __file__ is backend/app/main.py, so dirname gives backend/app/
@@ -30,7 +30,7 @@ if not os.path.exists(os.path.join(STATIC_DIR, "index.html")):
         f.write("<!DOCTYPE html><html><head><title>ChitChat AI</title></head><body><p>Frontend is loading or not yet built. Please run startup.sh to build and serve the application.</p></body></html>")
 
 # Import routers
-from backend.app.routers import auth, users, chat # Adjusted import
+from app.routers import auth, users, chat # Adjusted import
 
 # Include routers
 # The prefix here will be prepended to all routes in the router

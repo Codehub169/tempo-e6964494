@@ -1,9 +1,9 @@
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import or_, func # Added func here for clarity, though it's also imported at the end
+from sqlalchemy import or_, func
 from typing import List, Optional
 
 from . import models, schemas
-from backend.app.core.security import get_password_hash
+from app.core.security import get_password_hash
 
 def get_user(db: Session, user_id: int) -> Optional[models.User]:
     return db.query(models.User).filter(models.User.id == user_id).first()
@@ -140,5 +140,3 @@ def get_messages_for_chat(db: Session, chat_id: int, user_id: int, skip: int = 0
         .limit(limit)
         .all()
     )
-
-# from sqlalchemy import func # This is already imported at the top or can be removed if func is always accessed via sqlalchemy.func

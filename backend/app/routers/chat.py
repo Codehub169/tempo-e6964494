@@ -3,13 +3,13 @@ from sqlalchemy.orm import Session
 from typing import List, Dict
 import json
 
-from backend.app.db import crud, schemas, models
-from backend.app.db.database import get_db
-from backend.app.routers.users import get_current_user
-from backend.app.services.websocket import manager as websocket_manager
-from backend.app.services.gemini import gemini_service
-from backend.app.core import security # Added import for security functions
-from backend.app.core.config import settings # Added import for settings
+from app.db import crud, schemas, models
+from app.db.database import get_db
+from .users import get_current_user # Adjusted import
+from app.services.websocket import manager as websocket_manager
+from app.services.gemini import gemini_service
+from app.core import security
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -62,8 +62,8 @@ async def send_chat_message(
 
     db_message = crud.create_message(db=db, message_data=message_data, chat_id=chat_id, sender_id=current_user.id)
     
-    message_schema = schemas.Message.from_orm(db_message)
-    await websocket_manager.broadcast_json(message_schema.dict(), chat_id=chat_id)
+    message_schema = schemas.Message.model_validate(db_message) # Pydantic V2: from_orm -> model_validate
+    await websocket_manager.broadcast_json(message_schema.model_dump(mode='json'), chat_id=chat_id) # Pydantic V2: dict() -> model_dump()
 
     is_bot_chat = chat.chat_type == models.ChatType.BOT
     mentions_gemini = "@gemini" in message_data.content.lower()
@@ -87,8 +87,8 @@ async def send_chat_message(
             bot_message_data = schemas.MessageCreate(content=bot_response_text)
             db_bot_message = crud.create_message(db=db, message_data=bot_message_data, chat_id=chat_id, sender_id=bot_sender_id, is_bot_message=True)
             
-            bot_message_schema = schemas.Message.from_orm(db_bot_message)
-            await websocket_manager.broadcast_json(bot_message_schema.dict(), chat_id=chat_id)
+            bot_message_schema = schemas.Message.model_validate(db_bot_message) # Pydantic V2: from_orm -> model_validate
+            await websocket_manager.broadcast_json(bot_message_schema.model_dump(mode='json'), chat_id=chat_id) # Pydantic V2: dict() -> model_dump()
 
     return db_message
 
@@ -106,7 +106,7 @@ async def get_chat_messages(
 @router.websocket("/ws/{chat_id}/{token}")
 async def websocket_endpoint(websocket: WebSocket, chat_id: int, token: str, db: Session = Depends(get_db)):
     try:
-        payload = security.decode_access_token(token) # Corrected: use security.decode_access_token
+        payload = security.decode_access_token(token)
         if payload is None:
             await websocket.close(code=1008)
             return
@@ -125,7 +125,7 @@ async def websocket_endpoint(websocket: WebSocket, chat_id: int, token: str, db:
     ).first()
 
     if not chat_participant:
-        await websocket.close(code=4003)
+        await websocket.close(code=4003) # Using a more specific close code for 'not participant'
         return
 
     await websocket_manager.connect(websocket, chat_id)
@@ -135,17 +135,26 @@ async def websocket_endpoint(websocket: WebSocket, chat_id: int, token: str, db:
             try:
                 message_json = json.loads(data)
                 if message_json.get("type") == "typing":
+                    # Construct user details for typing indicator payload
+                    user_details_for_typing = {
+                        "id": user.id,
+                        "name": user.full_name,
+                        # Add avatarUrl if needed by frontend, though it's not strictly in user model by default
+                        # "avatarUrl": user.avatar_url or f"https://i.pravatar.cc/150?u={user.email}" 
+                    }
                     await websocket_manager.broadcast_json(
-                        {"type": "typing_indicator", "chatId": chat_id, "user": {"id": user.id, "name": user.full_name}, "isTyping": message_json.get("isTyping")},
+                        {"type": "typing_indicator", "chatId": chat_id, "user": user_details_for_typing, "isTyping": message_json.get("isTyping")},
                         chat_id=chat_id,
                         sender_ws=websocket
                     )
             except json.JSONDecodeError:
-                 print(f"Received non-JSON WebSocket message: {data}")
+                 print(f"Received non-JSON WebSocket message from {user.email} in chat {chat_id}: {data}")
 
     except WebSocketDisconnect:
         websocket_manager.disconnect(websocket, chat_id)
     except Exception as e:
         print(f"Error in WebSocket for chat {chat_id}, user {user.email}: {e}")
         websocket_manager.disconnect(websocket, chat_id)
-        await websocket.close(code=1011)
+        # It's good practice to try and close the websocket gracefully if an error occurs
+        if not websocket.client_state == websocket.client_state.DISCONNECTED:
+            await websocket.close(code=1011) # Internal Error

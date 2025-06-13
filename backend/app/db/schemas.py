@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field
 from typing import List, Optional
 from datetime import datetime
-from backend.app.db.models import ChatType # Import ChatType enum from models
+from .models import ChatType # Import ChatType enum from models
 
 # User Schemas
 class UserBase(BaseModel):

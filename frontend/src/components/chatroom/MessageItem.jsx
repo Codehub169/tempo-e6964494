@@ -1,5 +1,5 @@
 import React from 'react';
-import { PhRobot } from 'phosphor-react';
+import { Robot } from 'phosphor-react'; // Changed PhRobot to Robot
 
 const MessageItem = ({ message, type /* 'sent', 'received', 'bot' */ }) => {
   const { text, time, sender, isHtml } = message;
