@@ -1,5 +1,5 @@
 import React from 'react';
-import { PhRobot, PhCheckCircle } from 'phosphor-react'; // Using react-specific icons
+import { Robot, CheckCircle } from 'phosphor-react'; // Using react-specific icons
 
 const ChatItem = ({ chat, onSelectChat, isSelected }) => {
   const { id, name, type, lastMessage, avatarUrl, unreadCount, timestamp, onlineStatus, members } = chat;
@@ -28,7 +28,7 @@ const ChatItem = ({ chat, onSelectChat, isSelected }) => {
         <img src={displayAvatar} alt={`${chatDisplayName} Avatar`} className="w-12 h-12 rounded-full object-cover" />
         {isBotChat && !onlineStatus && (
           <div className="bot-indicator absolute bottom-0 right-0 w-5 h-5 bg-primary border-2 border-background rounded-full flex items-center justify-center">
-            <PhRobot size={12} className="text-text-primary" weight="bold" />
+            <Robot size={12} className="text-text-primary" weight="bold" />
           </div>
         )}
         {onlineStatus && type === 'ONE_ON_ONE' && (

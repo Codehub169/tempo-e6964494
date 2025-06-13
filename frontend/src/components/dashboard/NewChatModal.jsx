@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PhMagnifyingGlass, PhX } from 'phosphor-react';
+import { MagnifyingGlass, X, Robot } from 'phosphor-react'; // Added Robot
 import { useAuth } from '../../contexts/AuthContext';
 import { ChatType } from '../../utils/enums'; // Frontend enum for chat types
 
@@ -79,12 +79,12 @@ const NewChatModal = ({ isOpen, onClose, onStartChat, contacts: availableContact
         <div className="modal-header flex justify-between items-center mb-5">
           <h3 className="text-xl font-semibold text-text-primary">Start New Chat</h3>
           <button onClick={onClose} className="text-text-secondary hover:text-primary transition-colors">
-            <PhX size={24} />
+            <X size={24} />
           </button>
         </div>
 
         <div className="search-bar relative mb-5">
-          <PhMagnifyingGlass size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+          <MagnifyingGlass size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
           <input
             type="text"
             placeholder="Search for friends or bot..."
@@ -113,7 +113,7 @@ const NewChatModal = ({ isOpen, onClose, onStartChat, contacts: availableContact
                 <img src={contact.avatarUrl || `https://i.pravatar.cc/150?u=${contact.email}`} alt={contact.full_name || 'User'} className="w-10 h-10 rounded-full object-cover" />
                 {contact.is_bot && (
                   <div className="bot-indicator absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-primary border-2 border-background rounded-full flex items-center justify-center">
-                    <i className="ph-robot text-xs text-text-primary"></i>
+                    <Robot size={12} className="text-text-primary" weight="bold" />
                   </div>
                 )}
               </div>

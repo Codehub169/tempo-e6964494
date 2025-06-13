@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import MessageItem from './MessageItem';
-import { PhRobot } from 'phosphor-react';
+import { Robot } from 'phosphor-react';
 
 const MessageView = ({ messages, typingUsers = [], currentUserId = 'currentUser' }) => {
   const messagesEndRef = useRef(null);
@@ -58,22 +58,6 @@ const MessageView = ({ messages, typingUsers = [], currentUserId = 'currentUser'
         )
       ))}
       <div ref={messagesEndRef} />
-      {/* Inline style for keyframes as it's cleaner than global CSS for component-specific animation */}
-      <style jsx global>{`
-        @keyframes typing {
-          0%, 100% { opacity: 0.4; transform: scale(0.8); }
-          50% { opacity: 1; transform: scale(1); }
-        }
-        .animate-typing {
-          animation: typing 1.2s infinite ease-in-out;
-        }
-        .animation-delay-200 {
-          animation-delay: 0.2s;
-        }
-        .animation-delay-400 {
-          animation-delay: 0.4s;
-        }
-      `}</style>
     </main>
   );
 };
