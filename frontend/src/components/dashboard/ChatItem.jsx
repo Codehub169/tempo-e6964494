@@ -1,7 +1,7 @@
 import React from 'react';
 import { Robot, CheckCircle } from 'phosphor-react'; // Using react-specific icons
 
-const ChatItem = ({ chat, onSelectChat, isSelected }) => {
+const ChatItem = ({ chat, onSelect, isSelected }) => { // Changed onSelectChat to onSelect
   const { id, name, type, lastMessage, avatarUrl, unreadCount, timestamp, onlineStatus, members } = chat;
 
   const isBotChat = type === 'BOT' || (members && members.some(m => m.isBot));
@@ -19,7 +19,7 @@ const ChatItem = ({ chat, onSelectChat, isSelected }) => {
       href="#"
       onClick={(e) => {
         e.preventDefault();
-        onSelectChat(id);
+        onSelect(id); // Changed onSelectChat(id) to onSelect(id)
       }}
       className={`chat-item flex items-center p-4 rounded-xl cursor-pointer transition-colors duration-200 ease-in-out no-underline text-text-primary ${isSelected ? 'bg-surface-2 border-l-4 border-primary pl-3' : 'hover:bg-surface-2'}
       `}

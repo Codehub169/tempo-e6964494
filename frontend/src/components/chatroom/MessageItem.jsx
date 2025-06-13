@@ -2,7 +2,7 @@ import React from 'react';
 import { Robot } from 'phosphor-react'; // Changed PhRobot to Robot
 
 const MessageItem = ({ message, type /* 'sent', 'received', 'bot' */ }) => {
-  const { text, time, sender, isHtml } = message;
+  const { content, time, sender, isHtml } = message; // Changed 'text' to 'content'
   const { name: senderName, avatarUrl, isBot: senderIsBot } = sender || {}; // Destructure sender safely
 
   const avatar = avatarUrl || `https://i.pravatar.cc/150?u=${sender?.id || 'default'}`;
@@ -39,9 +39,9 @@ const MessageItem = ({ message, type /* 'sent', 'received', 'bot' */ }) => {
           <p className={senderNameClasses}>{senderName}</p>
         )}
         {isHtml ? (
-          <div className="message-text leading-relaxed" dangerouslySetInnerHTML={{ __html: text }} />
+          <div className="message-text leading-relaxed" dangerouslySetInnerHTML={{ __html: content }} /> // Changed 'text' to 'content'
         ) : (
-          <p className="message-text leading-relaxed whitespace-pre-wrap">{text}</p>
+          <p className="message-text leading-relaxed whitespace-pre-wrap">{content}</p> // Changed 'text' to 'content'
         )}
         {time && (
           <p className="message-time text-xs text-text-secondary/80 mt-1.5 text-right">
